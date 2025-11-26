@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
+import chromium from '@sparticuz/chromium';
+import puppeteerCore from 'puppeteer-core';
 import { Document, Packer, Paragraph, ImageRun, TextRun } from 'docx';
 
 export const maxDuration = 60; // Set max duration to 60 seconds for long running tasks
@@ -22,11 +23,26 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Launch Puppeteer
-        const browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        });
+        let browser;
+        if (process.env.NODE_ENV === 'production') {
+            // Production: Use puppeteer-core with @sparticuz/chromium
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const chromiumAny = chromium as any;
+            browser = await puppeteerCore.launch({
+                args: chromiumAny.args,
+                defaultViewport: chromiumAny.defaultViewport,
+                executablePath: await chromiumAny.executablePath(),
+                headless: chromiumAny.headless,
+            });
+        } else {
+            // Development: Use full puppeteer
+            const puppeteer = await import('puppeteer').then(mod => mod.default);
+            browser = await puppeteer.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            });
+        }
+
         const page = await browser.newPage();
 
         // Set viewport to a reasonable desktop size
@@ -143,8 +159,11 @@ export async function POST(req: NextRequest) {
             },
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error generating audit:', error);
-        return NextResponse.json({ error: 'Failed to generate audit' }, { status: 500 });
+        return NextResponse.json(
+            { error: 'Failed to generate audit', details: error.message || String(error) },
+            { status: 500 }
+        );
     }
 }

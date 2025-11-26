@@ -112,6 +112,8 @@ export default function Home() {
                     </svg>
                   </div>
                   <input
+                    id="url-input"
+                    name="url"
                     type="url"
                     required
                     placeholder="https://example.com"
@@ -122,6 +124,8 @@ export default function Home() {
                </div>
                <div className="relative group">
                   <input
+                    id="report-name-input"
+                    name="reportName"
                     type="text"
                     placeholder="Report Name (Optional)"
                     value={reportName}
