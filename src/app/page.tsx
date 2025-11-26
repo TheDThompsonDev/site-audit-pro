@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import styles from './page.module.css';
 
 export default function Home() {
   const [url, setUrl] = useState('');
@@ -81,31 +82,31 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#050505] text-gray-100 flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-white selection:text-black">
+    <main className={styles.main}>
       {/* Subtle Grid Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#232323_1px,transparent_1px),linear-gradient(to_bottom,#232323_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 pointer-events-none" />
+      <div className={styles.gridBackground} />
 
-      <div className="w-full max-w-2xl z-10">
-        <div className="mb-12 text-center space-y-4">
-          <div className="inline-flex items-center justify-center px-3 py-1 rounded-full border border-gray-800 bg-gray-900/50 backdrop-blur-sm text-xs font-medium text-gray-400 mb-4">
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <div className={styles.badge}>
             v1.1.0 • Audit & Screenshot Tool
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-white">
-            Site Audit <span className="text-gray-500">Pro</span>
+          <h1 className={styles.title}>
+            Site Audit <span className={styles.titleGray}>Pro</span>
           </h1>
-          <p className="text-lg text-gray-400 max-w-lg mx-auto leading-relaxed">
+          <p className={styles.description}>
             This is what a loving husband does for his wife! <br />
             Generate full-page screenshot audits in seconds. <br /> 
             Enter a URL below to receive a formatted Word document.
           </p>
         </div>
 
-        <div className="bg-[#0A0A0A] border border-gray-800 rounded-2xl p-6 shadow-2xl shadow-black/50 ring-1 ring-white/5">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-               <div className="md:col-span-2 relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-500 group-focus-within:text-white transition-colors" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div className={styles.card}>
+          <form onSubmit={handleSubmit} className={styles.form}>
+            <div className={styles.inputRow}>
+               <div className={styles.inputGroup}>
+                  <div className={styles.inputIcon}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10"></circle>
                       <line x1="2" y1="12" x2="22" y2="12"></line>
                       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
@@ -119,10 +120,10 @@ export default function Home() {
                     placeholder="https://example.com"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-white/10 focus:border-gray-700 outline-none transition-all"
+                    className={`${styles.input} ${styles.inputWithIcon}`}
                   />
                </div>
-               <div className="relative group">
+               <div className={styles.inputGroup}>
                   <input
                     id="report-name-input"
                     name="reportName"
@@ -130,7 +131,7 @@ export default function Home() {
                     placeholder="Report Name (Optional)"
                     value={reportName}
                     onChange={(e) => setReportName(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-white/10 focus:border-gray-700 outline-none transition-all"
+                    className={styles.input}
                   />
                </div>
             </div>
@@ -138,21 +139,17 @@ export default function Home() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-4 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center ${
-                loading
-                  ? 'bg-gray-800 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-black hover:bg-gray-200 active:scale-[0.99]'
-              }`}
+              className={`${styles.button} ${loading ? styles.buttonDisabled : styles.buttonPrimary}`}
             >
               {loading ? (
-                <div className="flex items-center">
-                   <div className="h-5 w-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-3" />
+                <div className={styles.buttonContent}>
+                   <div className={styles.spinner} />
                    Generating Audit...
                 </div>
               ) : (
                 <>
                   Generate Audit Document
-                  <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={styles.buttonIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
                 </>
@@ -162,19 +159,19 @@ export default function Home() {
         </div>
 
         {/* Status / Feedback Area */}
-        <div className="mt-8 h-12 flex items-center justify-center">
+        <div className={styles.statusArea}>
           {loading && (
-            <div className="flex items-center space-x-3 animate-pulse">
-              <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-400 font-mono">{status}</span>
+            <div className={styles.statusContent}>
+              <div className={styles.statusDot}></div>
+              <span className={styles.statusText}>{status}</span>
             </div>
           )}
           {error && (
-            <div className="flex items-center space-x-2 text-red-400 bg-red-950/30 px-4 py-2 rounded-lg border border-red-900/50">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className={styles.errorContainer}>
+              <svg className={styles.errorIcon} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-sm">{error}</span>
+              <span className={styles.errorText}>{error}</span>
             </div>
           )}
         </div>
