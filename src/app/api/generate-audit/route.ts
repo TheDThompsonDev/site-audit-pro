@@ -26,13 +26,10 @@ export async function POST(req: NextRequest) {
         let browser;
         if (process.env.NODE_ENV === 'production') {
             // Production: Use puppeteer-core with @sparticuz/chromium
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const chromiumAny = chromium as any;
             browser = await puppeteerCore.launch({
-                args: chromiumAny.args,
-                defaultViewport: chromiumAny.defaultViewport,
-                executablePath: await chromiumAny.executablePath(),
-                headless: chromiumAny.headless,
+                args: chromium.args,
+                executablePath: await chromium.executablePath(),
+                headless: true,
             });
         } else {
             // Development: Use full puppeteer
