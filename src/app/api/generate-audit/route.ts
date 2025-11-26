@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import chromium from '@sparticuz/chromium';
-import puppeteerCore from 'puppeteer-core';
 import { Document, Packer, Paragraph, ImageRun, TextRun } from 'docx';
+import sharp from 'sharp';
 
-export const maxDuration = 60; // Set max duration to 60 seconds for long running tasks
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
     try {
@@ -13,113 +12,92 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'URL is required' }, { status: 400 });
         }
 
-        // Sanitize filename or use default
         let filename = 'audit-report.docx';
         if (reportName) {
-            // Remove invalid characters for filenames
             const safeName = reportName.replace(/[^a-z0-9\s-_]/gi, '').trim();
             if (safeName) {
                 filename = `${safeName}.docx`;
             }
         }
 
-        let browser;
-        if (process.env.NODE_ENV === 'production') {
-            // Production: Use puppeteer-core with @sparticuz/chromium
-            // Set font config to avoid missing font errors
-            await chromium.font('https://raw.githack.com/googlefonts/noto-emoji/main/fonts/NotoColorEmoji.ttf');
-
-            browser = await puppeteerCore.launch({
-                args: [
-                    ...chromium.args,
-                    '--single-process',
-                    '--no-zygote',
-                ],
-                executablePath: await chromium.executablePath(),
-                headless: true,
-            });
-        } else {
-            // Development: Use full puppeteer
-            const puppeteer = await import('puppeteer').then(mod => mod.default);
-            browser = await puppeteer.launch({
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox'],
-            });
+        const screenshotApiKey = process.env.SCREENSHOT_API_KEY;
+        if (!screenshotApiKey) {
+            return NextResponse.json({ error: 'Screenshot API key not configured' }, { status: 500 });
         }
 
-        const page = await browser.newPage();
+        console.log('Taking full-page screenshot with fullPage and doScroll...');
 
-        // Set viewport to a reasonable desktop size
-        await page.setViewport({ width: 1280, height: 800 });
-
-        // Navigate to the URL
-        await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
-
-        // 1. Scroll to bottom to trigger lazy loads
-        await page.evaluate(async () => {
-            await new Promise<void>((resolve) => {
-                let totalHeight = 0;
-                const distance = 100;
-                const timer = setInterval(() => {
-                    const scrollHeight = document.body.scrollHeight;
-                    window.scrollBy(0, distance);
-                    totalHeight += distance;
-
-                    if (totalHeight >= scrollHeight) {
-                        clearInterval(timer);
-                        resolve();
-                    }
-                }, 100);
-            });
+        // Use correct parameter names: fullPage and doScroll (camelCase!)
+        const screenshotResponse = await fetch(`https://api.screenshotapi.com/take?apiKey=${screenshotApiKey}`, {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+                url: url,
+                fullPage: true,
+                doScroll: true,
+                width: 1280,
+                height: 720,
+                output: 'json',
+                fileType: 'jpeg',
+                waitForEvent: 'load',
+                timeout: 60000,
+                delay: 3000,
+            }),
         });
 
-        // 2. Wait a bit for any final animations/loads
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // 3. Get the full height of the page (robust calculation)
-        const fullHeight = await page.evaluate(() => {
-            const body = document.body;
-            const html = document.documentElement;
-            return Math.max(
-                body.scrollHeight, body.offsetHeight,
-                html.clientHeight, html.scrollHeight, html.offsetHeight
-            );
-        });
-
-        // 4. Reset scroll to top
-        await page.evaluate(() => window.scrollTo(0, 0));
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // 5. Take screenshots in chunks
-        const chunkHeight = 1200; // Slightly larger chunks
-        const finalScreenshots: Buffer[] = [];
-
-        for (let y = 0; y < fullHeight; y += chunkHeight) {
-            // Scroll to the chunk position to ensure it's rendered
-            await page.evaluate((scrollToY) => window.scrollTo(0, scrollToY), y);
-
-            // Wait for paint
-            await new Promise(resolve => setTimeout(resolve, 200));
-
-            const heightToCapture = Math.min(chunkHeight, fullHeight - y);
-
-            const buffer = await page.screenshot({
-                encoding: 'binary',
-                clip: {
-                    x: 0,
-                    y: y,
-                    width: 1280,
-                    height: heightToCapture
-                },
-                type: 'jpeg',
-                quality: 80
-            });
-            finalScreenshots.push(buffer as Buffer);
+        if (!screenshotResponse.ok) {
+            const errorText = await screenshotResponse.text();
+            throw new Error(`Screenshot service error (${screenshotResponse.status}): ${errorText}`);
         }
 
-        await browser.close();
+        const screenshotData = await screenshotResponse.json();
 
-        // Create Document
+        if (!screenshotData.outputUrl) {
+            throw new Error(`Screenshot service did not return an image URL`);
+        }
+
+        const imageResponse = await fetch(screenshotData.outputUrl);
+        if (!imageResponse.ok) {
+            throw new Error('Failed to download screenshot image');
+        }
+
+        const screenshotBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+        const metadata = await sharp(screenshotBuffer).metadata();
+        const imageWidth = metadata.width || 1280;
+        const imageHeight = metadata.height || 800;
+
+        console.log('Full page screenshot dimensions:', imageWidth, 'x', imageHeight);
+
+        // Split the full page screenshot into chunks
+        const chunkHeight = 720;
+        const imageChunks: Buffer[] = [];
+
+        for (let y = 0; y < imageHeight; y += chunkHeight) {
+            const heightToCapture = Math.min(chunkHeight, imageHeight - y);
+
+            console.log(`Creating chunk at y=${y}, height=${heightToCapture}`);
+
+            const chunk = await sharp(screenshotBuffer)
+                .extract({
+                    left: 0,
+                    top: y,
+                    width: imageWidth,
+                    height: heightToCapture,
+                })
+                .toBuffer();
+
+            imageChunks.push(chunk);
+        }
+
+        console.log(`Total chunks created: ${imageChunks.length}`);
+
+        const maxWidth = 600;
+        const scale = maxWidth / imageWidth;
+
         const doc = new Document({
             sections: [{
                 properties: {},
@@ -133,28 +111,32 @@ export async function POST(req: NextRequest) {
                             }),
                         ],
                     }),
-                    new Paragraph({ text: "" }), // Spacer
-                    ...finalScreenshots.map((buffer, index) =>
-                        new Paragraph({
+                    new Paragraph({ text: "" }),
+                    ...imageChunks.map((chunkBuffer, index) => {
+                        const actualHeight = index === imageChunks.length - 1
+                            ? Math.min(chunkHeight, imageHeight - (index * chunkHeight))
+                            : chunkHeight;
+
+                        return new Paragraph({
                             children: [
                                 new ImageRun({
-                                    data: buffer,
+                                    data: chunkBuffer,
                                     transformation: {
-                                        width: 600,
-                                        height: (Math.min(chunkHeight, fullHeight - index * chunkHeight)) * (600 / 1280)
+                                        width: maxWidth,
+                                        height: actualHeight * scale,
                                     },
                                 } as any),
                             ],
-                        })
-                    )
+                        });
+                    })
                 ],
             }],
         });
 
-        // Generate buffer
         const buffer = await Packer.toBuffer(doc);
 
-        // Return the file
+        console.log('Document generated successfully with', imageChunks.length, 'image chunks');
+
         return new NextResponse(buffer as any, {
             status: 200,
             headers: {
