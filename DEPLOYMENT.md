@@ -42,10 +42,17 @@ This project uses `@sparticuz/chromium@123.0.1` for serverless Chrome in product
 
 ### Troubleshooting
 
-If you still encounter the brotli error after deployment:
-1. Make sure `@sparticuz/chromium` is in `dependencies` (not `devDependencies`)
-2. Redeploy after confirming package.json is correct
-3. Check Vercel function logs for specific errors
+#### Fixed Issues:
+1. **"brotli files" error** - Fixed by using `@sparticuz/chromium@123.0.1`
+2. **"libnss3.so: cannot open shared object file"** - Fixed by adding:
+   - `--single-process` flag (runs Chrome in single process mode)
+   - `--no-zygote` flag (disables Chrome's process forking)
+   - Font configuration via `chromium.font()`
+
+#### If you still encounter issues:
+1. Check Vercel function logs for specific errors
+2. Verify you're on a Vercel Pro plan (required for 60s timeout)
+3. Ensure the deployment completed successfully
 
 ### Alternative: Vercel Pro Plan
 

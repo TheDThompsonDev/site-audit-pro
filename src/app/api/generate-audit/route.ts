@@ -26,8 +26,15 @@ export async function POST(req: NextRequest) {
         let browser;
         if (process.env.NODE_ENV === 'production') {
             // Production: Use puppeteer-core with @sparticuz/chromium
+            // Set font config to avoid missing font errors
+            await chromium.font('https://raw.githack.com/googlefonts/noto-emoji/main/fonts/NotoColorEmoji.ttf');
+
             browser = await puppeteerCore.launch({
-                args: chromium.args,
+                args: [
+                    ...chromium.args,
+                    '--single-process',
+                    '--no-zygote',
+                ],
                 executablePath: await chromium.executablePath(),
                 headless: true,
             });
