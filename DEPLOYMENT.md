@@ -2,23 +2,31 @@
 
 ## Deploying to Vercel
 
-This project uses `@sparticuz/chromium` for serverless Chrome in production environments.
+This project uses `@sparticuz/chromium@123.0.1` for serverless Chrome in production environments.
+
+> **Important:** We use version 123.0.1 specifically because newer versions (141+) have breaking changes that cause the "brotli files" error on Vercel.
 
 ### Steps to Deploy:
 
-1. **Push your code to GitHub** (if not already done)
+1. **Verify the correct chromium version**
+   ```bash
+   # Should show @sparticuz/chromium@123.0.1
+   npm list @sparticuz/chromium
+   ```
+
+2. **Push your code to GitHub** (if not already done)
    ```bash
    git add .
-   git commit -m "Add serverless Chrome support"
+   git commit -m "Fix chromium version for Vercel deployment"
    git push
    ```
 
-2. **Connect to Vercel**
+3. **Connect to Vercel**
    - Go to [vercel.com](https://vercel.com)
    - Import your repository
    - Vercel will auto-detect Next.js
 
-3. **Important Configuration**
+4. **Important Configuration**
    - The `vercel.json` file is already configured with:
      - **maxDuration**: 60 seconds (for screenshot generation)
      - **memory**: 3008 MB (required for Chrome)
